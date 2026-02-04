@@ -351,9 +351,9 @@ export interface DuckStoreState {
   ) => Promise<void>;
   createTab: (
     type?: EditorTabType,
-    title?: string,
-    content?: EditorTab["content"]
-  ) => void;
+    content?: EditorTab["content"],
+    title?: string
+  ) => string;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabQuery: (tabId: string, query: string) => void;
@@ -1477,9 +1477,22 @@ export const useDuckStore = create<DuckStoreState>()(
 
         // Tab management actions.
         createTab: (type = "sql", content = "", title) => {
+          const tabTitle = typeof title === "string" ? title : "Untitled Query";
+          
+          // Check if a tab with this title already exists
+          const state = get();
+          const existingTab = state.tabs.find((tab) => tab.title === tabTitle);
+          
+          if (existingTab) {
+            // Just set the existing tab as active without replacing content
+            set({ activeTabId: existingTab.id });
+            return existingTab.id;
+          }
+          
+          // Create a new tab if no matching title exists
           const newTab: EditorTab = {
             id: crypto.randomUUID(),
-            title: typeof title === "string" ? title : "Untitled Query",
+            title: tabTitle,
             type,
             content,
           };
@@ -1487,6 +1500,7 @@ export const useDuckStore = create<DuckStoreState>()(
             tabs: [...state.tabs, newTab],
             activeTabId: newTab.id,
           }));
+          return newTab.id;
         },
 
         closeTab: (tabId) => {

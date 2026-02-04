@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 /**
  * Hook to handle loading queries from URL parameters.
- * Supports base64-encoded queries via ?query=<base64>&execute=true
+ * Supports base64-encoded queries via ?query=<base64>&execute=true&title=<title>
  */
 export function useQueryFromURL() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +18,7 @@ export function useQueryFromURL() {
 
     const queryParam = searchParams.get("query");
     const executeParam = searchParams.get("execute");
+    const titleParam = searchParams.get("title");
 
     if (!queryParam) return;
 
@@ -30,11 +31,11 @@ export function useQueryFromURL() {
         return;
       }
 
-      // Create a new SQL tab with the decoded query
-      const tabId = createTab("sql", decodedQuery);
+      // Create a new SQL tab with the decoded query (or replace existing tab with same title)
+      const tabId = createTab("sql", decodedQuery, titleParam || undefined);
       hasProcessedRef.current = true;
 
-      toast.success("Query loaded from URL");
+      toast.success(titleParam ? `Query loaded into "${titleParam}" tab` : "Query loaded from URL");
 
       // Auto-execute if requested
       if (executeParam === "true" && tabId) {
@@ -57,12 +58,15 @@ export function useQueryFromURL() {
 /**
  * Generate a shareable URL with the query encoded in base64
  */
-export function generateQueryURL(query: string, autoExecute = false): string {
+export function generateQueryURL(query: string, autoExecute = false, title?: string): string {
   const base64Query = btoa(query);
   const params = new URLSearchParams();
   params.set("query", base64Query);
   if (autoExecute) {
     params.set("execute", "true");
+  }
+  if (title) {
+    params.set("title", title);
   }
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
@@ -70,9 +74,9 @@ export function generateQueryURL(query: string, autoExecute = false): string {
 /**
  * Copy the shareable query URL to clipboard
  */
-export async function copyQueryURL(query: string, autoExecute = false): Promise<boolean> {
+export async function copyQueryURL(query: string, autoExecute = false, title?: string): Promise<boolean> {
   try {
-    const url = generateQueryURL(query, autoExecute);
+    const url = generateQueryURL(query, autoExecute, title);
     await navigator.clipboard.writeText(url);
     return true;
   } catch (error) {
